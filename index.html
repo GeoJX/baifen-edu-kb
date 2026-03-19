@@ -191,20 +191,55 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe 
 .article-nav button:hover { background: #f1f5f9; color: var(--text); }
 .article-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
 
+/* Hamburger button (mobile only) */
+.menu-toggle {
+  display: none; width: 36px; height: 36px; border: none; background: rgba(255,255,255,0.15);
+  border-radius: 8px; cursor: pointer; flex-shrink: 0; margin-right: 12px;
+  align-items: center; justify-content: center;
+}
+.menu-toggle span {
+  display: block; width: 20px; height: 2px; background: #fff; border-radius: 1px;
+  position: relative; transition: all 0.3s;
+}
+.menu-toggle span::before, .menu-toggle span::after {
+  content: ''; position: absolute; width: 20px; height: 2px; background: #fff;
+  border-radius: 1px; transition: all 0.3s; left: 0;
+}
+.menu-toggle span::before { top: -6px; }
+.menu-toggle span::after { top: 6px; }
+.menu-toggle.active span { background: transparent; }
+.menu-toggle.active span::before { top: 0; transform: rotate(45deg); }
+.menu-toggle.active span::after { top: 0; transform: rotate(-45deg); }
+
+/* Overlay */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 40; opacity: 0; transition: opacity 0.3s;
+}
+.sidebar-overlay.active { display: block; opacity: 1; }
+
 /* Mobile */
 @media (max-width: 768px) {
-  .sidebar { display: none; }
+  .menu-toggle { display: flex; }
+  .sidebar {
+    transform: translateX(-100%); transition: transform 0.3s ease;
+  }
+  .sidebar.open { transform: translateX(0); }
   .main { margin-left: 0; }
   .header-stats { display: none; }
-  .search-box input { width: 160px; }
-  .search-box input:focus { width: 200px; }
+  .search-box input { width: 120px; }
+  .search-box input:focus { width: 180px; }
   .article-body { padding: 20px; }
+  .header { padding: 0 12px; }
+  .header-logo h1 { font-size: 16px; }
+  .header-logo .subtitle { display: none; }
 }
 </style>
 </head>
 <body>
 
 <div class="header">
+  <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()"><span></span></button>
   <div class="header-logo">
     <div class="logo-icon">百</div>
     <div>
@@ -224,6 +259,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe 
   </div>
 </div>
 
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 <div class="sidebar" id="sidebar"></div>
 <div class="main" id="main"></div>
 
@@ -346,6 +382,13 @@ function showFile(fid) {
   // Highlight code blocks
   document.querySelectorAll('.article-body pre code').forEach(el => hljs.highlightElement(el));
   window.scrollTo(0, 0);
+
+  // Close sidebar on mobile after selecting a file
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+    document.getElementById('menuToggle').classList.remove('active');
+  }
 }
 
 function showHome() {
@@ -433,6 +476,16 @@ document.addEventListener('keydown', e => {
     document.getElementById('searchResults').classList.remove('active');
   }
 });
+
+// Mobile sidebar toggle
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const btn = document.getElementById('menuToggle');
+  const isOpen = sb.classList.toggle('open');
+  overlay.classList.toggle('active', isOpen);
+  btn.classList.toggle('active', isOpen);
+}
 
 // Init
 marked.setOptions({ breaks: true, gfm: true });
