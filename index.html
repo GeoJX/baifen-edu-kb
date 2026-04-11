@@ -348,7 +348,14 @@ function showFile(fid) {
   const prevId = idx > 0 ? ALL_IDS[idx-1] : null;
   const nextId = idx < ALL_IDS.length-1 ? ALL_IDS[idx+1] : null;
   const content = f.content.replace(/^---[\s\S]*?---\n?/, '');
-  const rendered = marked.parse(content);
+  let rendered = marked.parse(content);
+  rendered = rendered.replace(/src="(images\/[^"]+)"/g, (m, path) => {
+    let fixed = path;
+    if (!path.startsWith('images/' + modKey + '/')) {
+      fixed = 'images/' + modKey + '/' + path.replace(/^images\//, '');
+    }
+    return 'src="' + encodeURI(fixed) + '"';
+  });
   document.getElementById('main').innerHTML = `<div class="article">
     <div class="article-header">
       <div class="article-breadcrumb">${breadcrumb}</div>
@@ -363,13 +370,6 @@ function showFile(fid) {
   </div>`;
   document.querySelectorAll('.article-body pre code').forEach(el => hljs.highlightElement(el));
   document.querySelectorAll('.article-body img').forEach(img => {
-    let src = img.getAttribute('src');
-    if (src && src.startsWith('images/')) {
-      if (!src.startsWith('images/' + modKey + '/')) {
-        src = 'images/' + modKey + '/' + src.replace(/^images\//, '');
-      }
-      img.src = encodeURI(src);
-    }
     img.addEventListener('click', function(e) { openLightbox(this.src, this.alt || ''); e.stopPropagation(); });
   });
   window.scrollTo(0, 0);
