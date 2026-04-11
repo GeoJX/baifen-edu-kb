@@ -350,11 +350,10 @@ function showFile(fid) {
   const content = f.content.replace(/^---[\s\S]*?---\n?/, '');
   let rendered = marked.parse(content);
   rendered = rendered.replace(/src="(images\/[^"]+)"/g, (m, path) => {
-    let fixed = path;
     if (!path.startsWith('images/' + modKey + '/')) {
-      fixed = 'images/' + modKey + '/' + path.replace(/^images\//, '');
+      path = 'images/' + modKey + '/' + path.replace(/^images\//, '');
     }
-    return 'src="' + encodeURI(fixed) + '"';
+    return 'src="' + path + '"';
   });
   document.getElementById('main').innerHTML = `<div class="article">
     <div class="article-header">
