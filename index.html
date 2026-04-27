@@ -327,9 +327,10 @@ function showImages(mod) {
   window.scrollTo(0, 0);
 }
 
-function showFile(fid) {
+function showFile(fid, section) {
   currentFile = fid;
-  const newHash = '#' + encodeURIComponent(fid);
+  let newHash = '#' + encodeURIComponent(fid);
+  if (section) newHash += '$' + encodeURIComponent(section);
   if (location.hash !== newHash) history.replaceState(null, '', newHash);
   const f = FILES[fid];
   const modKey = f.module;
@@ -359,6 +360,24 @@ function showFile(fid) {
     }
     return 'src="' + path + '"';
   });
+  // 改写 .md 链接 → hash router (支持 #anchor)
+  rendered = rendered.replace(/href="([^"#]+?\.md)(#[^"]*)?"/g, (m, mdPath, anchor) => {
+    if (mdPath.startsWith('http')) return m;
+    const curDir = f.path.split('/').slice(0, -1);
+    const resolved = [...curDir];
+    for (const seg of mdPath.split('/')) {
+      if (seg === '..') resolved.pop();
+      else if (seg !== '.' && seg !== '') resolved.push(seg);
+    }
+    const targetPath = resolved.join('/').replace(/\.md$/, '');
+    const tfid = targetPath.replace(/\//g, '__');
+    if (FILES[tfid]) {
+      let href = '#' + encodeURIComponent(tfid);
+      if (anchor && anchor.length > 1) href += '$' + encodeURIComponent(anchor.slice(1));
+      return 'href="' + href + '"';
+    }
+    return m;
+  });
   document.getElementById('main').innerHTML = `<div class="article">
     <div class="article-header">
       <div class="article-breadcrumb">${breadcrumb}</div>
@@ -375,7 +394,25 @@ function showFile(fid) {
   document.querySelectorAll('.article-body img').forEach(img => {
     img.addEventListener('click', function(e) { openLightbox(this.src, this.alt || ''); e.stopPropagation(); });
   });
-  window.scrollTo(0, 0);
+  if (section) {
+    setTimeout(() => {
+      const tryIds = [section, decodeURIComponent(section)];
+      for (const id of tryIds) {
+        const el = document.getElementById(id);
+        if (el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); return; }
+      }
+      // fallback: 找标题文字匹配
+      const headings = document.querySelectorAll('.article-body h1, .article-body h2, .article-body h3, .article-body h4');
+      for (const h of headings) {
+        if (h.textContent.includes(decodeURIComponent(section))) {
+          h.scrollIntoView({behavior: 'smooth', block: 'start'});
+          return;
+        }
+      }
+    }, 50);
+  } else {
+    window.scrollTo(0, 0);
+  }
   if (window.innerWidth <= 768) toggleSidebar();
 }
 
@@ -451,16 +488,20 @@ function toggleSidebar() {
 marked.setOptions({ breaks: true, gfm: true });
 buildSidebar();
 
-// Hash router: 支持 URL 深链
+// Hash router: 支持 URL 深链 + section 锚点（格式 #fid$section）
 function navigateToHash() {
-  const hash = decodeURIComponent(location.hash.slice(1));
-  if (!hash) { showWelcome(); return; }
-  if (hash.startsWith('images/')) {
-    const mod = hash.slice(7);
+  const raw = location.hash.slice(1);
+  if (!raw) { showWelcome(); return; }
+  const dollarIdx = raw.indexOf('$');
+  const fidPart = dollarIdx >= 0 ? raw.slice(0, dollarIdx) : raw;
+  const sectionPart = dollarIdx >= 0 ? raw.slice(dollarIdx + 1) : null;
+  const fid = decodeURIComponent(fidPart);
+  if (fid.startsWith('images/')) {
+    const mod = fid.slice(7);
     if (TREE[mod]) showImages(mod); else showWelcome();
     return;
   }
-  if (FILES[hash]) showFile(hash); else showWelcome();
+  if (FILES[fid]) showFile(fid, sectionPart); else showWelcome();
 }
 window.addEventListener('hashchange', navigateToHash);
 navigateToHash(); // 初次加载按 URL 跳转
